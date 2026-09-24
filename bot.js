@@ -35,48 +35,59 @@ function createBot() {
                 body: JSON.stringify({
                     model: 'gpt-3.5-turbo',
                     messages: [
-                        { role: 'system', content: 'Sən Minecraft-da hərəkət edə bilən, oyunçu ilə danışan və əmrləri yerinə yetirən botsan. Qısa cavab ver.' },
+                        { role: 'system', content: 'Sən Minecraft oyununda yaşayan ağıllı bir botsan. Qısa, səmimi və oyunçu kimi cavab ver.' },
                         { role: 'user', content: prompt }
                     ],
                     max_tokens: 50
                 })
             });
             const data = await response.json();
+            if (!data || data.error || !data.choices || !data.choices[0]) {
+                return 'Salam! Hazırda cavab verməkdə çətinlik çəkirəm.';
+            }
             return data.choices[0].message.content;
         } catch (err) {
-            console.log('GPT Xətası:', err);
-            return 'Xəta baş verdi.';
+            return 'Salam! Bağlantı xətası baş verdi.';
         }
     }
 
     bot.on('chat', async (username, message) => {
         if (username === bot.username) return;
 
+        const lowerMessage = message.toLowerCase().trim();
+        if (!lowerMessage.startsWith('bot')) return;
+
+        const args = message.slice(3).trim();
+        const lowerArgs = args.toLowerCase();
         const isMaster = config.permissions.masters.includes(username);
 
-        if (message.startsWith('!')) {
-            if (!isMaster) return;
-
-            if (message === '!test') {
-                bot.chat('Hər şey işləyir!');
-            } else if (message === '!gel') {
-                const target = bot.players[username]?.entity;
-                if (target) {
-                    const { x, y, z } = target.position;
-                    bot.pathfinder.setGoal(new GoalNear(x, y, z, 2));
-                    bot.chat('Yanına gəlirəm!');
-                } else {
-                    bot.chat('Səni görmürəm!');
-                }
-            } else if (message === '!dayandir') {
-                bot.pathfinder.setGoal(null);
-                bot.chat('Dayandım.');
+        if (lowerArgs.startsWith('gəl') || lowerArgs.startsWith('gel')) {
+            if (!isMaster) {
+                bot.chat('Bunu yalnız sahibim edə bilər!');
+                return;
+            }
+            const target = bot.players[username]?.entity;
+            if (target) {
+                const { x, y, z } = target.position;
+                bot.pathfinder.setGoal(new GoalNear(x, y, z, 2));
+                bot.chat('Yanına gəlirəm!');
+            } else {
+                bot.chat('Səni görmürəm!');
             }
             return;
         }
 
-        const aiAnswer = await askGPT(`${username}: ${message}`);
-        bot.chat(aiAnswer);
+        if (lowerArgs.startsWith('dayandır') || lowerArgs.startsWith('dayandir')) {
+            if (!isMaster) return;
+            bot.pathfinder.setGoal(null);
+            bot.chat('Dayandım.');
+            return;
+        }
+
+        if (args.length > 0) {
+            const aiAnswer = await askGPT(`${username}: ${args}`);
+            bot.chat(aiAnswer);
+        }
     });
 
     bot.on('end', () => {
