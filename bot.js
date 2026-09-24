@@ -2,6 +2,14 @@ const mineflayer = require('mineflayer');
 const { pathfinder, Movements, goals: { GoalNear } } = require('mineflayer-pathfinder');
 const config = require('./config.json');
 
+process.on('uncaughtException', (err) => {
+    console.log('Xəta basdırıldı:', err.message);
+});
+
+process.on('unhandledRejection', (reason) => {
+    console.log('Sözləşmə xətası:', reason);
+});
+
 function createBot() {
     const bot = mineflayer.createBot({
         host: config.server.host,
@@ -19,9 +27,13 @@ function createBot() {
     });
 
     bot._client.on('packet', (data, packet) => {
-        if (packet.name === 'player_chat' || packet.name === 'system_chat') {
-            data.formatted = '{"text": ""}';
-        }
+        try {
+            if (packet.name === 'player_chat' || packet.name === 'system_chat') {
+                if (data && data.unsignedChatContent) {
+                    data.unsignedChatContent = '';
+                }
+            }
+        } catch (e) {}
     });
 
     async function askGPT(prompt) {
@@ -90,12 +102,13 @@ function createBot() {
         }
     });
 
-    bot.on('end', () => {
+    bot.on('end', (reason) => {
+        console.log(`Bağlantı kəsildi (${reason}), 5 saniyə sonra yenidən qoşulur...`);
         setTimeout(createBot, 5000);
     });
 
     bot.on('error', (err) => {
-        console.log('Xəta:', err.message);
+        console.log('Bot xətası:', err.message);
     });
 }
 
