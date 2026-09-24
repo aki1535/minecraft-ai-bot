@@ -1,0 +1,19 @@
+{
+  "server": {
+    "host": "aki1545.aternos.me",
+    "port": 20893,
+    "version": "1.21.4"
+  },
+  "bot": {
+    "username": "aki1540"
+  },
+  "permissions": {
+    "masters": ["aki1545"]
+  },
+  "settings": {
+    "chatRadius": 15
+  },
+  "openai": {
+    "apiKey": "Sk-proj-zgYn83DZZNiH6R59I5EcN_yLTYcEvTwaUoW-wQj_OuiYnys9fjaKZ7k9JBG6Oqq_hZy56ns9xHT3BlbkFJrG-mvtWnSDafWLE1eFiwLh_vSkmn3gndJ8GMHEUS4Jz2EMd0fN1saiAHYoGqJbNUxDI6emanIA"
+  }
+}
