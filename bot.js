@@ -1,4 +1,5 @@
 const mineflayer = require('mineflayer');
+const { pathfinder, Movements, goals: { GoalNear } } = require('mineflayer-pathfinder');
 const config = require('./config.json');
 
 function createBot() {
@@ -9,8 +10,18 @@ function createBot() {
         username: config.bot.username
     });
 
+    bot.loadPlugin(pathfinder);
+
     bot.on('spawn', () => {
         console.log(`${bot.username} serverə qoşuldu!`);
+        const defaultMove = new Movements(bot);
+        bot.pathfinder.setMovements(defaultMove);
+    });
+
+    bot._client.on('packet', (data, packet) => {
+        if (packet.name === 'player_chat' || packet.name === 'system_chat') {
+            data.formatted = '{"text": ""}';
+        }
     });
 
     async function askGPT(prompt) {
@@ -24,7 +35,7 @@ function createBot() {
                 body: JSON.stringify({
                     model: 'gpt-3.5-turbo',
                     messages: [
-                        { role: 'system', content: 'Sən Minecraft oyununda yaşayan ağıllı bir botsan. Qısa, səmimi və oyunçu kimi cavab ver.' },
+                        { role: 'system', content: 'Sən Minecraft-da hərəkət edə bilən, oyunçu ilə danışan və əmrləri yerinə yetirən botsan. Qısa cavab ver.' },
                         { role: 'user', content: prompt }
                     ],
                     max_tokens: 50
@@ -34,7 +45,7 @@ function createBot() {
             return data.choices[0].message.content;
         } catch (err) {
             console.log('GPT Xətası:', err);
-            return 'Ağlım qarışdı, səni başa düşmədim.';
+            return 'Xəta baş verdi.';
         }
     }
 
@@ -45,33 +56,36 @@ function createBot() {
 
         if (message.startsWith('!')) {
             if (!isMaster) return;
-            if (message === '!test') bot.chat('Salam sahibim, hər şey qaydasındadır!');
+
+            if (message === '!test') {
+                bot.chat('Hər şey işləyir!');
+            } else if (message === '!gel') {
+                const target = bot.players[username]?.entity;
+                if (target) {
+                    const { x, y, z } = target.position;
+                    bot.pathfinder.setGoal(new GoalNear(x, y, z, 2));
+                    bot.chat('Yanına gəlirəm!');
+                } else {
+                    bot.chat('Səni görmürəm!');
+                }
+            } else if (message === '!dayandir') {
+                bot.pathfinder.setGoal(null);
+                bot.chat('Dayandım.');
+            }
             return;
         }
 
-        const player = bot.players[username];
-        if (!player || !player.entity) return;
-
-        const distance = bot.entity.position.distanceTo(player.entity.position);
-        if (distance > config.settings.chatRadius) return;
-
-        const dx = player.entity.position.x - bot.entity.position.x;
-        const dz = player.entity.position.z - bot.entity.position.z;
-        let yawDiff = Math.abs(bot.entity.yaw - Math.atan2(-dx, -dz));
-        while (yawDiff > Math.PI) yawDiff -= 2 * Math.PI;
-
-        if (Math.abs(yawDiff) <= Math.PI / 2) {
-            const aiAnswer = await askGPT(`${username}: ${message}`);
-            bot.chat(aiAnswer);
-        }
+        const aiAnswer = await askGPT(`${username}: ${message}`);
+        bot.chat(aiAnswer);
     });
 
     bot.on('end', () => {
-        console.log('Bağlantı kəsildi, 5 saniyə sonra yenidən qoşulur...');
         setTimeout(createBot, 5000);
     });
 
-    bot.on('error', (err) => console.log('Xəta:', err));
+    bot.on('error', (err) => {
+        console.log('Xəta:', err.message);
+    });
 }
 
 createBot();
