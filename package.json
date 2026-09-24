@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "bot.js",
   "dependencies": {
-    "mineflayer": "^4.20.0"
+    "mineflayer": "^4.20.0",
+    "mineflayer-pathfinder": "^2.4.3"
   },
   "scripts": {
     "start": "node bot.js"
